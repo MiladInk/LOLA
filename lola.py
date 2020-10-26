@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 
 alpha = 0.99
 
-
 def get_initial_game_state(p1: torch.tensor, p2: torch.tensor):
   return torch.cat([p1 * p2, p1 * (1 - p2), (1 - p1) * p2, (1 - p1) * (1 - p2)], dim=0)
 
@@ -24,9 +23,9 @@ def get_asymptotic_reward_mathematically(p1_init: torch.tensor, p2_init: torch.t
   M = t_matrix.t() * alpha
   A = torch.inverse(torch.eye(4) - M)
   StateSum = torch.matmul(A, game_state)
-  normalizing_factor = 1 / (1 - alpha)
-  reward_1 = calculate_reward(payoff1, StateSum) / normalizing_factor
-  reward_2 = calculate_reward(payoff2, StateSum) / normalizing_factor
+  rescaling_factor = (1 - alpha)
+  reward_1 = calculate_reward(payoff1, StateSum) * rescaling_factor
+  reward_2 = calculate_reward(payoff2, StateSum) * rescaling_factor
   return reward_1, reward_2
 
 
@@ -53,6 +52,14 @@ def calculate_reward(payoff: torch.tensor, game_state: torch.tensor):
   return torch.sum(payoff.reshape(-1) * game_state)
 
 
+def game_cooperate_probability(game_theta: torch.tensor) -> torch.tensor:
+  return torch.sigmoid(game_theta)
+
+
+def game_start_probability(start_theta: torch.tensor) -> torch.tensor:
+  return torch.sigmoid(start_theta)
+
+
 if __name__ == '__main__':
   # payoff matrix assuming event payoff_player_x[player 1 choice][player 2 choice]
   IPD_payoff_player1 = torch.tensor([[-1, -3],
@@ -62,14 +69,14 @@ if __name__ == '__main__':
                                      [-3, -2]])
 
   Chicken_payoff_player1 = torch.tensor([[0, -1],
-                                        [10, -200]])
+                                         [10, -20]])
 
   Chicken_payoff_player2 = torch.tensor([[0, 10],
-                                        [-1, -200]])
+                                         [-1, -20]])
 
   player1_start_theta = torch.rand(1, requires_grad=True) - 0.5
-  player2_start_theta = torch.rand(1, requires_grad=True) - 0.5
   player1_game_theta = torch.rand(4, requires_grad=True) - 0.5
+  player2_start_theta = torch.rand(1, requires_grad=True) - 0.5
   player2_game_theta = torch.rand(4, requires_grad=True) - 0.5
 
 
@@ -78,26 +85,43 @@ if __name__ == '__main__':
   def players_rewards():
     # ---- players config ----
 
-    player1_start_cooperate_probability = torch.sigmoid(player1_start_theta)
-    player2_start_cooperate_probability = torch.sigmoid(player2_start_theta)
+    player1_start_cooperate_probability = game_start_probability(player1_start_theta)
+    player2_start_cooperate_probability = game_start_probability(player2_start_theta)
     # assuming CC, CD, DC, DD
 
-    player1_cooperate_probability = torch.sigmoid(player1_game_theta)
-    player2_cooperate_probability = torch.sigmoid(player2_game_theta)
+    player1_cooperate_probability = game_cooperate_probability(player1_game_theta)
+    player2_cooperate_probability = game_cooperate_probability(player2_game_theta)
     reward_1, reward_2 = get_asymptotic_reward_mathematically(player1_start_cooperate_probability,
                                                               player2_start_cooperate_probability,
                                                               player1_cooperate_probability,
                                                               player2_cooperate_probability,
-                                                              Chicken_payoff_player1,
-                                                              Chicken_payoff_player2)
+                                                              IPD_payoff_player1,
+                                                              IPD_payoff_player2)
     return reward_1, reward_2
 
 
   # --- lola ---- #
 
-  for i in range(10000):
+  for i in range(10000000):
     V1, V2 = players_rewards()
     print('iter:', i, V1.item(), V2.item())
+    player1_start_cooperate_probability = game_start_probability(player1_start_theta)
+    player2_start_cooperate_probability = game_start_probability(player2_start_theta)
+    # assuming CC, CD, DC, DD
+    player1_cooperate_probability = game_cooperate_probability(player1_game_theta)
+    player2_cooperate_probability = game_cooperate_probability(player2_game_theta)
+
+    p1cc, p1cd, p1dc, p1dd = player1_game_theta.tolist()
+    p2cc, p2cd, p2dc, p2dd = player2_game_theta.tolist()
+    print('p1CCl %.4f p1CDl  %.4f p1DCl %.4f p1DDl %.4f' % (p1cc, p1cd, p1dc, p1dd))
+    print('p2CCl %.4f p2CDl  %.4f p2DCl %.4f p2DDl %.4f' % (p2cc, p2cd, p2dc, p2dd))
+
+    p1cc, p1cd, p1dc, p1dd = player1_cooperate_probability.tolist()
+    p2cc, p2cd, p2dc, p2dd = player2_cooperate_probability.tolist()
+    print('p1CC %.4f p1CD  %.4f p1DC %.4f p1DD %.4f' % (p1cc, p1cd, p1dc, p1dd))
+    print('p2CC %.4f p2CD  %.4f p2DC %.4f p2DD %.4f' % (p2cc, p2cd, p2dc, p2dd))
+    print('p1_C %.4f p2_C %.4f' % (player1_start_cooperate_probability.tolist()[0],
+                                   player2_start_cooperate_probability.tolist()[0]))
 
     dV1_wrt_player1_start_theta, dV1_wrt_player1_game_theta = autograd.grad(
       outputs=V1,
@@ -139,25 +163,25 @@ if __name__ == '__main__':
       inputs=[player2_start_theta, player2_game_theta],
       retain_graph=True)
 
-    lr = 3e-2
-    eta = 3e-1 * 0
+    lr1 = 3e-2
+    eta1 = 3e-1
+    lr2 = 3e-2
+    eta2 = 3e-1
 
-    if i > 2500:
-      eta = 3e-1
+    player1_start_theta.data.add_(dV1_wrt_player1_start_theta * lr1 + dV1_taylor_wrt_player1_start_theta * eta1)
+    player1_game_theta.data.add_(dV1_wrt_player1_game_theta * lr1 + dV1_taylor_wrt_player1_game_theta * eta1)
 
-    player1_start_theta.data.add_(dV1_wrt_player1_start_theta * lr + dV1_taylor_wrt_player1_start_theta * eta)
-    player1_game_theta.data.add_(dV1_wrt_player1_game_theta * lr + dV1_taylor_wrt_player1_game_theta * eta)
-    player2_start_theta.data.add_(dV2_wrt_player2_start_theta * lr + dV2_taylor_wrt_player2_start_theta * eta)
-    player2_game_theta.data.add_(dV2_wrt_player2_game_theta * lr + dV2_taylor_wrt_player2_game_theta * eta)
+    player2_start_theta.data.add_(dV2_wrt_player2_start_theta * lr2 + dV2_taylor_wrt_player2_start_theta * eta2)
+    player2_game_theta.data.add_(dV2_wrt_player2_game_theta * lr2 + dV2_taylor_wrt_player2_game_theta * eta2)
 
     # plotting the probabilities
     if i % 100 == 0:
-      player1_start_cooperate_probability = torch.sigmoid(player1_start_theta)
-      player2_start_cooperate_probability = torch.sigmoid(player2_start_theta)
+      player1_start_cooperate_probability = game_start_probability(player1_start_theta)
+      player2_start_cooperate_probability = game_start_probability(player2_start_theta)
       # assuming CC, CD, DC, DD
 
-      player1_cooperate_probability = torch.sigmoid(player1_game_theta)
-      player2_cooperate_probability = torch.sigmoid(player2_game_theta)
+      player1_cooperate_probability = game_cooperate_probability(player1_game_theta)
+      player2_cooperate_probability = game_cooperate_probability(player2_game_theta)
 
       plt.bar(['p1CC', 'p1CD', 'p1DC', 'p1DD'], player1_cooperate_probability.tolist())
       plt.bar(['p2CC', 'p2CD', 'p2DC', 'p2DD'], player2_cooperate_probability.tolist())

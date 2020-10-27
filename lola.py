@@ -4,7 +4,7 @@ import torch
 import torch.autograd as autograd
 import matplotlib.pyplot as plt
 
-alpha = 0.99
+alpha = 0.999
 
 def get_initial_game_state(p1: torch.tensor, p2: torch.tensor):
   return torch.cat([p1 * p2, p1 * (1 - p2), (1 - p1) * p2, (1 - p1) * (1 - p2)], dim=0)
@@ -78,6 +78,11 @@ if __name__ == '__main__':
   player1_game_theta = torch.rand(4, requires_grad=True) - 0.5
   player2_start_theta = torch.rand(1, requires_grad=True) - 0.5
   player2_game_theta = torch.rand(4, requires_grad=True) - 0.5
+  #
+  # player1_start_theta = torch.tensor([5.], requires_grad=True)
+  # player1_game_theta = torch.tensor([5., -5., 5., -5.], requires_grad=True)
+  # player2_start_theta = torch.tensor([5.], requires_grad=True)
+  # player2_game_theta = torch.tensor([5., 5., -5., -5.], requires_grad=True)
 
 
   # --- calculate the reward ---
@@ -95,8 +100,8 @@ if __name__ == '__main__':
                                                               player2_start_cooperate_probability,
                                                               player1_cooperate_probability,
                                                               player2_cooperate_probability,
-                                                              IPD_payoff_player1,
-                                                              IPD_payoff_player2)
+                                                              Chicken_payoff_player1,
+                                                              Chicken_payoff_player2)
     return reward_1, reward_2
 
 
@@ -104,24 +109,25 @@ if __name__ == '__main__':
 
   for i in range(10000000):
     V1, V2 = players_rewards()
-    print('iter:', i, V1.item(), V2.item())
     player1_start_cooperate_probability = game_start_probability(player1_start_theta)
     player2_start_cooperate_probability = game_start_probability(player2_start_theta)
     # assuming CC, CD, DC, DD
     player1_cooperate_probability = game_cooperate_probability(player1_game_theta)
     player2_cooperate_probability = game_cooperate_probability(player2_game_theta)
 
-    p1cc, p1cd, p1dc, p1dd = player1_game_theta.tolist()
-    p2cc, p2cd, p2dc, p2dd = player2_game_theta.tolist()
-    print('p1CCl %.4f p1CDl  %.4f p1DCl %.4f p1DDl %.4f' % (p1cc, p1cd, p1dc, p1dd))
-    print('p2CCl %.4f p2CDl  %.4f p2DCl %.4f p2DDl %.4f' % (p2cc, p2cd, p2dc, p2dd))
+    if i % 100 == 0:
+      print('iter:', i, V1.item(), V2.item())
+      p1cc, p1cd, p1dc, p1dd = player1_game_theta.tolist()
+      p2cc, p2cd, p2dc, p2dd = player2_game_theta.tolist()
+      print('p1CCl %.4f p1CDl  %.4f p1DCl %.4f p1DDl %.4f' % (p1cc, p1cd, p1dc, p1dd))
+      print('p2CCl %.4f p2CDl  %.4f p2DCl %.4f p2DDl %.4f' % (p2cc, p2cd, p2dc, p2dd))
 
-    p1cc, p1cd, p1dc, p1dd = player1_cooperate_probability.tolist()
-    p2cc, p2cd, p2dc, p2dd = player2_cooperate_probability.tolist()
-    print('p1CC %.4f p1CD  %.4f p1DC %.4f p1DD %.4f' % (p1cc, p1cd, p1dc, p1dd))
-    print('p2CC %.4f p2CD  %.4f p2DC %.4f p2DD %.4f' % (p2cc, p2cd, p2dc, p2dd))
-    print('p1_C %.4f p2_C %.4f' % (player1_start_cooperate_probability.tolist()[0],
-                                   player2_start_cooperate_probability.tolist()[0]))
+      p1cc, p1cd, p1dc, p1dd = player1_cooperate_probability.tolist()
+      p2cc, p2cd, p2dc, p2dd = player2_cooperate_probability.tolist()
+      print('p1CC %.4f p1CD  %.4f p1DC %.4f p1DD %.4f' % (p1cc, p1cd, p1dc, p1dd))
+      print('p2CC %.4f p2CD  %.4f p2DC %.4f p2DD %.4f' % (p2cc, p2cd, p2dc, p2dd))
+      print('p1_C %.4f p2_C %.4f' % (player1_start_cooperate_probability.tolist()[0],
+                                     player2_start_cooperate_probability.tolist()[0]))
 
     dV1_wrt_player1_start_theta, dV1_wrt_player1_game_theta = autograd.grad(
       outputs=V1,
@@ -175,7 +181,8 @@ if __name__ == '__main__':
     player2_game_theta.data.add_(dV2_wrt_player2_game_theta * lr2 + dV2_taylor_wrt_player2_game_theta * eta2)
 
     # plotting the probabilities
-    if i % 100 == 0:
+    if i % 10000 == 0:
+      print('lr1 %.4f eta1 %.f4 lr2 %.4f eta2 %.4f' % (lr1, eta1, lr2, eta2))
       player1_start_cooperate_probability = game_start_probability(player1_start_theta)
       player2_start_cooperate_probability = game_start_probability(player2_start_theta)
       # assuming CC, CD, DC, DD

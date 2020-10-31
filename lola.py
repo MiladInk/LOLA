@@ -1,10 +1,11 @@
+import random
 import time
 
 import torch
 import torch.autograd as autograd
 import matplotlib.pyplot as plt
 
-alpha = 0.999
+alpha = 0.99
 
 def get_initial_game_state(p1: torch.tensor, p2: torch.tensor):
   return torch.cat([p1 * p2, p1 * (1 - p2), (1 - p1) * p2, (1 - p1) * (1 - p2)], dim=0)
@@ -27,6 +28,19 @@ def get_asymptotic_reward_mathematically(p1_init: torch.tensor, p2_init: torch.t
   reward_1 = calculate_reward(payoff1, StateSum) * rescaling_factor
   reward_2 = calculate_reward(payoff2, StateSum) * rescaling_factor
   return reward_1, reward_2
+
+
+def get_random_payoff_matrix():
+  a = 0
+  d = random.randint(a, 5)
+  b = random.randint(-5, 5)
+  c = random.randint(-5, 5)
+  player1_payoff = [[a, b], [c, d]]
+  player2_payoff = [[a, c], [b, d]]
+  player1_payoff_tensor = torch.tensor(player1_payoff)
+  player2_payoff_tensor = torch.tensor(player2_payoff)
+
+  return player1_payoff_tensor, player2_payoff_tensor
 
 
 def get_asymptotic_reward_iteratively(p1_init: torch.tensor, p2_init: torch.tensor, p1: torch.tensor,
@@ -69,23 +83,42 @@ if __name__ == '__main__':
                                      [-3, -2]])
 
   Chicken_payoff_player1 = torch.tensor([[0, -1],
-                                         [10, -20]])
+                                         [10, -200]])
 
   Chicken_payoff_player2 = torch.tensor([[0, 10],
-                                         [-1, -20]])
+                                         [-1, -200]])
+
+  Exp1_payoff_player1 = torch.tensor([[0, 2.5],
+                                      [-1., 1]])
+
+  Exp1_payoff_player2 = torch.tensor([[0, -1],
+                                      [2.5, 1]])
+
+  rand_payoff_player1, rand_payoff_player2 = get_random_payoff_matrix()
 
   player1_start_theta = torch.rand(1, requires_grad=True) - 0.5
   player1_game_theta = torch.rand(4, requires_grad=True) - 0.5
   player2_start_theta = torch.rand(1, requires_grad=True) - 0.5
   player2_game_theta = torch.rand(4, requires_grad=True) - 0.5
-  #
+
   # player1_start_theta = torch.tensor([5.], requires_grad=True)
   # player1_game_theta = torch.tensor([5., -5., 5., -5.], requires_grad=True)
   # player2_start_theta = torch.tensor([5.], requires_grad=True)
   # player2_game_theta = torch.tensor([5., 5., -5., -5.], requires_grad=True)
 
+  # player1_start_theta = torch.tensor([-5.], requires_grad=True)
+  # player1_game_theta = torch.tensor([-5., -5., -5., -5.], requires_grad=True)
+  # player2_start_theta = torch.tensor([-5.], requires_grad=True)
+  # player2_game_theta = torch.tensor([-5., -5., -5., -5.], requires_grad=True)
 
   # --- calculate the reward ---
+
+  chosen_payoff_player1 = IPD_payoff_player1
+  chosen_payoff_player2 = IPD_payoff_player2
+
+  print('player1_payoff:', chosen_payoff_player1)
+  print('player2_payoff:', chosen_payoff_player2)
+  input('ok, let\'s go?[any input will lead to running]:')
 
   def players_rewards():
     # ---- players config ----
@@ -100,8 +133,8 @@ if __name__ == '__main__':
                                                               player2_start_cooperate_probability,
                                                               player1_cooperate_probability,
                                                               player2_cooperate_probability,
-                                                              Chicken_payoff_player1,
-                                                              Chicken_payoff_player2)
+                                                              chosen_payoff_player1,
+                                                              chosen_payoff_player2)
     return reward_1, reward_2
 
 
@@ -115,7 +148,7 @@ if __name__ == '__main__':
     player1_cooperate_probability = game_cooperate_probability(player1_game_theta)
     player2_cooperate_probability = game_cooperate_probability(player2_game_theta)
 
-    if i % 100 == 0:
+    if i % 1000 == 0:
       print('iter:', i, V1.item(), V2.item())
       p1cc, p1cd, p1dc, p1dd = player1_game_theta.tolist()
       p2cc, p2cd, p2dc, p2dd = player2_game_theta.tolist()
@@ -181,7 +214,7 @@ if __name__ == '__main__':
     player2_game_theta.data.add_(dV2_wrt_player2_game_theta * lr2 + dV2_taylor_wrt_player2_game_theta * eta2)
 
     # plotting the probabilities
-    if i % 10000 == 0:
+    if i % 1000 == 0:
       print('lr1 %.4f eta1 %.f4 lr2 %.4f eta2 %.4f' % (lr1, eta1, lr2, eta2))
       player1_start_cooperate_probability = game_start_probability(player1_start_theta)
       player2_start_cooperate_probability = game_start_probability(player2_start_theta)

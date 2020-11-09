@@ -101,16 +101,6 @@ if __name__ == '__main__':
   player2_start_theta = torch.rand(1, requires_grad=True) - 0.5
   player2_game_theta = torch.rand(4, requires_grad=True) - 0.5
 
-  # player1_start_theta = torch.tensor([5.], requires_grad=True)
-  # player1_game_theta = torch.tensor([5., -5., 5., -5.], requires_grad=True)
-  # player2_start_theta = torch.tensor([5.], requires_grad=True)
-  # player2_game_theta = torch.tensor([5., 5., -5., -5.], requires_grad=True)
-
-  # player1_start_theta = torch.tensor([-5.], requires_grad=True)
-  # player1_game_theta = torch.tensor([-5., -5., -5., -5.], requires_grad=True)
-  # player2_start_theta = torch.tensor([-5.], requires_grad=True)
-  # player2_game_theta = torch.tensor([-5., -5., -5., -5.], requires_grad=True)
-
   # --- calculate the reward ---
 
   chosen_payoff_player1 = IPD_payoff_player1

@@ -198,7 +198,8 @@ if __name__ == '__main__':
     V1_taylor = torch.dot(normalize(dV1_wrt_player2_theta), normalize(dV2_wrt_player2_theta))
     V2_taylor = torch.dot(normalize(dV2_wrt_player1_theta), normalize(dV1_wrt_player1_theta))
 
-    print(V1_taylor, V2_taylor)
+    if i % 1000 == 0:
+      print(V1_taylor, V2_taylor)
 
     dV1_taylor_wrt_player1_start_theta, dV1_taylor_wrt_player1_game_theta = autograd.grad(
       outputs=V1_taylor,

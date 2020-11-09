@@ -74,6 +74,11 @@ def game_start_probability(start_theta: torch.tensor) -> torch.tensor:
   return torch.sigmoid(start_theta)
 
 
+def normalize(t: torch.tensor) -> torch.tensor:
+  norm = torch.sqrt((t**2).sum())
+  return t/norm
+
+
 if __name__ == '__main__':
   # payoff matrix assuming event payoff_player_x[player 1 choice][player 2 choice]
   IPD_payoff_player1 = torch.tensor([[-1, -3],
@@ -113,8 +118,8 @@ if __name__ == '__main__':
 
   # --- calculate the reward ---
 
-  chosen_payoff_player1 = IPD_payoff_player1
-  chosen_payoff_player2 = IPD_payoff_player2
+  chosen_payoff_player1 = Exp1_payoff_player1
+  chosen_payoff_player2 = Exp1_payoff_player2
 
   print('player1_payoff:', chosen_payoff_player1)
   print('player2_payoff:', chosen_payoff_player2)
@@ -185,12 +190,15 @@ if __name__ == '__main__':
       inputs=[player1_start_theta, player1_game_theta],
       create_graph=True,
       retain_graph=True)
+    dV2_wrt_player2_theta = torch.cat([dV2_wrt_player2_start_theta, dV2_wrt_player2_game_theta])
+    dV1_wrt_player2_theta = torch.cat([dV1_wrt_player2_start_theta, dV1_wrt_player2_game_theta])
+    dV1_wrt_player1_theta = torch.cat([dV1_wrt_player1_start_theta, dV1_wrt_player1_game_theta])
+    dV2_wrt_player1_theta = torch.cat([dV2_wrt_player1_start_theta, dV2_wrt_player1_game_theta])
 
-    V1_taylor = torch.dot(torch.cat([dV2_wrt_player2_start_theta, dV2_wrt_player2_game_theta]),
-                          torch.cat([dV1_wrt_player2_start_theta.detach(), dV1_wrt_player2_game_theta.detach()]))
+    V1_taylor = torch.dot(normalize(dV1_wrt_player2_theta), normalize(dV2_wrt_player2_theta))
+    V2_taylor = torch.dot(normalize(dV2_wrt_player1_theta), normalize(dV1_wrt_player1_theta))
 
-    V2_taylor = torch.dot(torch.cat([dV1_wrt_player1_start_theta, dV1_wrt_player1_game_theta]),
-                          torch.cat([dV2_wrt_player1_start_theta.detach(), dV2_wrt_player1_game_theta.detach()]))
+    print(V1_taylor, V2_taylor)
 
     dV1_taylor_wrt_player1_start_theta, dV1_taylor_wrt_player1_game_theta = autograd.grad(
       outputs=V1_taylor,
@@ -203,9 +211,9 @@ if __name__ == '__main__':
       retain_graph=True)
 
     lr1 = 3e-2
-    eta1 = 3e-1
+    eta1 = 9e-2
     lr2 = 3e-2
-    eta2 = 3e-1
+    eta2 = 9e-2
 
     player1_start_theta.data.add_(dV1_wrt_player1_start_theta * lr1 + dV1_taylor_wrt_player1_start_theta * eta1)
     player1_game_theta.data.add_(dV1_wrt_player1_game_theta * lr1 + dV1_taylor_wrt_player1_game_theta * eta1)

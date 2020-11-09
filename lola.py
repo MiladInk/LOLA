@@ -5,65 +5,7 @@ import torch
 import torch.autograd as autograd
 import matplotlib.pyplot as plt
 
-alpha = 0.99
-
-def get_initial_game_state(p1: torch.tensor, p2: torch.tensor):
-  return torch.cat([p1 * p2, p1 * (1 - p2), (1 - p1) * p2, (1 - p1) * (1 - p2)], dim=0)
-
-
-def get_transition_matrix(p1: torch.tensor, p2: torch.tensor):
-  tm = torch.stack([p1 * p2, p1 * (1 - p2), (1 - p1) * p2, (1 - p1) * (1 - p2)], dim=1)
-  return tm
-
-
-def get_asymptotic_reward_mathematically(p1_init: torch.tensor, p2_init: torch.tensor, p1: torch.tensor,
-                                         p2: torch.tensor, payoff1: torch.tensor, payoff2: torch.tensor):
-  game_state = get_initial_game_state(p1_init, p2_init)
-  t_matrix = get_transition_matrix(p1, p2)
-
-  M = t_matrix.t() * alpha
-  A = torch.inverse(torch.eye(4) - M)
-  StateSum = torch.matmul(A, game_state)
-  rescaling_factor = (1 - alpha)
-  reward_1 = calculate_reward(payoff1, StateSum) * rescaling_factor
-  reward_2 = calculate_reward(payoff2, StateSum) * rescaling_factor
-  return reward_1, reward_2
-
-
-def get_random_payoff_matrix():
-  a = 0
-  d = random.randint(a, 5)
-  b = random.randint(-5, 5)
-  c = random.randint(-5, 5)
-  player1_payoff = [[a, b], [c, d]]
-  player2_payoff = [[a, c], [b, d]]
-  player1_payoff_tensor = torch.tensor(player1_payoff)
-  player2_payoff_tensor = torch.tensor(player2_payoff)
-
-  return player1_payoff_tensor, player2_payoff_tensor
-
-
-def get_asymptotic_reward_iteratively(p1_init: torch.tensor, p2_init: torch.tensor, p1: torch.tensor,
-                                      p2: torch.tensor, payoff1: torch.tensor, payoff2: torch.tensor):
-  game_state = get_initial_game_state(p1_init, p2_init)
-  t_matrix = get_transition_matrix(p1, p2)
-
-  reward_1 = torch.zeros(1)
-  reward_2 = torch.zeros(1)
-
-  coef = 1.
-  for i in range(20000):
-    reward_1 = reward_1 + coef * calculate_reward(payoff1, game_state)
-    reward_2 = reward_2 + coef * calculate_reward(payoff2, game_state)
-    game_state = t_matrix.t().matmul(game_state)
-    coef = coef * alpha
-    print(reward_1)
-
-  return reward_1, reward_2
-
-
-def calculate_reward(payoff: torch.tensor, game_state: torch.tensor):
-  return torch.sum(payoff.reshape(-1) * game_state)
+from game import IPDGame, TwoPlayerSwitchGame
 
 
 def game_cooperate_probability(game_theta: torch.tensor) -> torch.tensor:
@@ -75,71 +17,40 @@ def game_start_probability(start_theta: torch.tensor) -> torch.tensor:
 
 
 def normalize(t: torch.tensor) -> torch.tensor:
-  norm = torch.sqrt((t**2).sum())
-  return t/norm
+  norm = torch.sqrt((t ** 2).sum())
+  return t / norm
 
 
 if __name__ == '__main__':
-  # payoff matrix assuming event payoff_player_x[player 1 choice][player 2 choice]
-  IPD_payoff_player1 = torch.tensor([[-1, -3],
-                                     [0, -2]])
-
-  IPD_payoff_player2 = torch.tensor([[-1, 0],
-                                     [-3, -2]])
-
-  Chicken_payoff_player1 = torch.tensor([[0, -1],
-                                         [10, -200]])
-
-  Chicken_payoff_player2 = torch.tensor([[0, 10],
-                                         [-1, -200]])
-
-  Exp1_payoff_player1 = torch.tensor([[0, 2.5],
-                                      [-1., 1]])
-
-  Exp1_payoff_player2 = torch.tensor([[0, -1],
-                                      [2.5, 1]])
-
-  rand_payoff_player1, rand_payoff_player2 = get_random_payoff_matrix()
 
   player1_start_theta = torch.rand(1, requires_grad=True) - 0.5
   player1_game_theta = torch.rand(4, requires_grad=True) - 0.5
   player2_start_theta = torch.rand(1, requires_grad=True) - 0.5
   player2_game_theta = torch.rand(4, requires_grad=True) - 0.5
 
-  # player1_start_theta = torch.tensor([5.], requires_grad=True)
-  # player1_game_theta = torch.tensor([5., -5., 5., -5.], requires_grad=True)
-  # player2_start_theta = torch.tensor([5.], requires_grad=True)
-  # player2_game_theta = torch.tensor([5., 5., -5., -5.], requires_grad=True)
-
-  # player1_start_theta = torch.tensor([-5.], requires_grad=True)
-  # player1_game_theta = torch.tensor([-5., -5., -5., -5.], requires_grad=True)
-  # player2_start_theta = torch.tensor([-5.], requires_grad=True)
-  # player2_game_theta = torch.tensor([-5., -5., -5., -5.], requires_grad=True)
-
   # --- calculate the reward ---
+  chosen_game = IPDGame()
 
-  chosen_payoff_player1 = Exp1_payoff_player1
-  chosen_payoff_player2 = Exp1_payoff_player2
-
-  print('player1_payoff:', chosen_payoff_player1)
-  print('player2_payoff:', chosen_payoff_player2)
+  print('player1_payoff:', chosen_game.payoff_player1)
+  print('player2_payoff:', chosen_game.payoff_player2)
   input('ok, let\'s go?[any input will lead to running]:')
+
 
   def players_rewards():
     # ---- players config ----
-
     player1_start_cooperate_probability = game_start_probability(player1_start_theta)
     player2_start_cooperate_probability = game_start_probability(player2_start_theta)
     # assuming CC, CD, DC, DD
 
     player1_cooperate_probability = game_cooperate_probability(player1_game_theta)
     player2_cooperate_probability = game_cooperate_probability(player2_game_theta)
-    reward_1, reward_2 = get_asymptotic_reward_mathematically(player1_start_cooperate_probability,
-                                                              player2_start_cooperate_probability,
-                                                              player1_cooperate_probability,
-                                                              player2_cooperate_probability,
-                                                              chosen_payoff_player1,
-                                                              chosen_payoff_player2)
+
+    player1_params = {TwoPlayerSwitchGame.START_COOPERATION_PROBABILITY: player1_start_cooperate_probability,
+                      TwoPlayerSwitchGame.GAME_COOPERATION_PROBABILITY: player1_cooperate_probability}
+    player2_params = {TwoPlayerSwitchGame.START_COOPERATION_PROBABILITY: player2_start_cooperate_probability,
+                      TwoPlayerSwitchGame.GAME_COOPERATION_PROBABILITY: player2_cooperate_probability}
+    reward_1, reward_2 = chosen_game.compute_reward([player1_params, player2_params])
+
     return reward_1, reward_2
 
 
@@ -195,8 +106,11 @@ if __name__ == '__main__':
     dV1_wrt_player1_theta = torch.cat([dV1_wrt_player1_start_theta, dV1_wrt_player1_game_theta])
     dV2_wrt_player1_theta = torch.cat([dV2_wrt_player1_start_theta, dV2_wrt_player1_game_theta])
 
-    V1_taylor = torch.dot(normalize(dV1_wrt_player2_theta), normalize(dV2_wrt_player2_theta))
-    V2_taylor = torch.dot(normalize(dV2_wrt_player1_theta), normalize(dV1_wrt_player1_theta))
+    # V1_taylor = torch.dot(normalize(dV1_wrt_player2_theta), normalize(dV2_wrt_player2_theta))
+    # V2_taylor = torch.dot(normalize(dV2_wrt_player1_theta), normalize(dV1_wrt_player1_theta))
+
+    V1_taylor = torch.dot(dV1_wrt_player2_theta.detach(), dV2_wrt_player2_theta)
+    V2_taylor = torch.dot(dV2_wrt_player1_theta.detach(), dV1_wrt_player1_theta)
 
     if i % 1000 == 0:
       print(V1_taylor, V2_taylor)
@@ -212,9 +126,13 @@ if __name__ == '__main__':
       retain_graph=True)
 
     lr1 = 3e-2
-    eta1 = 9e-2
+    eta1 = 3e-1
     lr2 = 3e-2
-    eta2 = 9e-2
+    eta2 = 3e-1
+
+    # if i < 5000:
+    #   eta1 = 0
+    #   eta2 = 0
 
     player1_start_theta.data.add_(dV1_wrt_player1_start_theta * lr1 + dV1_taylor_wrt_player1_start_theta * eta1)
     player1_game_theta.data.add_(dV1_wrt_player1_game_theta * lr1 + dV1_taylor_wrt_player1_game_theta * eta1)

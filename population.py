@@ -88,12 +88,6 @@ if __name__ == '__main__':
                                      player2_start_cooperate_probability.tolist()[0]))
 
       print('lr1 %.4f eta1 %.f4 lr2 %.4f eta2 %.4f' % (player1.lr, player1.eta, player2.lr, player2.eta))
-      player1_start_cooperate_probability = game_start_probability(player1_start_theta)
-      player2_start_cooperate_probability = game_start_probability(player2_start_theta)
-      # assuming CC, CD, DC, DD
-
-      player1_cooperate_probability = game_cooperate_probability(player1_game_theta)
-      player2_cooperate_probability = game_cooperate_probability(player2_game_theta)
 
       plt.bar(['p1CC', 'p1CD', 'p1DC', 'p1DD'], player1_cooperate_probability.tolist())
       plt.bar(['p2CC', 'p2CD', 'p2DC', 'p2DD'], player2_cooperate_probability.tolist())

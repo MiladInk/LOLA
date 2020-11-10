@@ -36,7 +36,11 @@ class TwoPlayerSwitchGame(Game):
     player1_start_cooperate_probability = player1_params[self.START_COOPERATION_PROBABILITY]
     player2_start_cooperate_probability = player2_params[self.START_COOPERATION_PROBABILITY]
     player1_cooperate_probability = player1_params[self.GAME_COOPERATION_PROBABILITY]
-    player2_cooperate_probability = player2_params[self.GAME_COOPERATION_PROBABILITY]
+    p2CC = player2_params[self.GAME_COOPERATION_PROBABILITY][0]
+    p2CD = player2_params[self.GAME_COOPERATION_PROBABILITY][1]
+    p2DC = player2_params[self.GAME_COOPERATION_PROBABILITY][2]
+    p2DD = player2_params[self.GAME_COOPERATION_PROBABILITY][3]
+    player2_cooperate_probability = torch.stack([p2CC, p2DC, p2CD, p2DD])
 
     reward_1, reward_2 = get_asymptotic_reward_mathematically(player1_start_cooperate_probability,
                                                               player2_start_cooperate_probability,

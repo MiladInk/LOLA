@@ -49,11 +49,11 @@ class LOLAAgent(Agent):
       retain_graph=True)
     dV1_wrt_player2_theta = torch.cat(dV1_wrt_player2_theta_list)
 
-    V1_taylor = torch.dot(normalize(dV1_wrt_player2_theta), normalize(dV2_wrt_player2_theta))
+    # V1_taylor = torch.dot(normalize(dV1_wrt_player2_theta), normalize(dV2_wrt_player2_theta))
 
     # print('V_taylor %.4f' % V1_taylor)
 
-    # V1_taylor = torch.dot(dV1_wrt_player2_theta.detach(), dV2_wrt_player2_theta)
+    V1_taylor = torch.dot(dV1_wrt_player2_theta.detach(), dV2_wrt_player2_theta)
 
     dV1_taylor_wrt_player1_theta_list = autograd.grad(
       outputs=V1_taylor,

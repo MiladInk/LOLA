@@ -1,6 +1,7 @@
 import random
 import time
 
+import numpy as np
 import torch
 import torch.autograd as autograd
 import matplotlib.pyplot as plt
@@ -118,8 +119,8 @@ if __name__ == '__main__':
 
   # --- calculate the reward ---
 
-  chosen_payoff_player1 = Exp1_payoff_player1
-  chosen_payoff_player2 = Exp1_payoff_player2
+  chosen_payoff_player1 = IPD_payoff_player1
+  chosen_payoff_player2 = IPD_payoff_player2
 
   print('player1_payoff:', chosen_payoff_player1)
   print('player2_payoff:', chosen_payoff_player2)
@@ -145,8 +146,16 @@ if __name__ == '__main__':
 
   # --- lola ---- #
 
+  v1s = []
+  v2s = []
+  v1_taylors = []
+  v2_taylors = []
+
   for i in range(10000000):
     V1, V2 = players_rewards()
+    v1s.append(V1.item())
+    v2s.append(V2.item())
+
     player1_start_cooperate_probability = game_start_probability(player1_start_theta)
     player2_start_cooperate_probability = game_start_probability(player2_start_theta)
     # assuming CC, CD, DC, DD
@@ -197,6 +206,12 @@ if __name__ == '__main__':
 
     V1_taylor = torch.dot(normalize(dV1_wrt_player2_theta), normalize(dV2_wrt_player2_theta))
     V2_taylor = torch.dot(normalize(dV2_wrt_player1_theta), normalize(dV1_wrt_player1_theta))
+    #
+    # V1_taylor = torch.dot(dV1_wrt_player2_theta.detach(), normalize(dV2_wrt_player2_theta))
+    # V2_taylor = torch.dot(dV2_wrt_player1_theta.detach(), normalize(dV1_wrt_player1_theta))
+
+    v1_taylors.append(V1_taylor.item())
+    v2_taylors.append(V2_taylor.item())
 
     if i % 1000 == 0:
       print(V1_taylor, V2_taylor)
@@ -212,9 +227,13 @@ if __name__ == '__main__':
       retain_graph=True)
 
     lr1 = 3e-2
-    eta1 = 9e-2
+    eta1 = 9e-1
     lr2 = 3e-2
-    eta2 = 9e-2
+    eta2 = 9e-1
+
+    # if i < 3000:
+    #   eta1 = 0
+    #   eta2 = 0
 
     player1_start_theta.data.add_(dV1_wrt_player1_start_theta * lr1 + dV1_taylor_wrt_player1_start_theta * eta1)
     player1_game_theta.data.add_(dV1_wrt_player1_game_theta * lr1 + dV1_taylor_wrt_player1_game_theta * eta1)
@@ -237,4 +256,16 @@ if __name__ == '__main__':
       plt.bar(['p1_C', 'p2_C'], [player1_start_cooperate_probability.tolist()[0],
                                  player2_start_cooperate_probability.tolist()[0]])
       plt.show()
+
+      plt.figure(figsize=(15, 8))
+      plt.subplot(2, 1, 1)
+      plt.plot(np.arange(len(v1s)), v1s)
+      plt.plot(np.arange(len(v1s)), v2s)
+      plt.legend(['V1', 'V2'], loc='upper left', frameon=True, framealpha=1, ncol=3)
+      plt.subplot(2, 1, 2)
+      plt.plot(np.arange(len(v1s)), v1_taylors)
+      plt.plot(np.arange(len(v1s)), v2_taylors)
+      plt.legend(['V1_taylor_LOLA_term', 'V2_taylor_LOLA_term'], loc='upper left', frameon=True, framealpha=1, ncol=3)
+      plt.show()
       time.sleep(1)
+

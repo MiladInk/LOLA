@@ -85,7 +85,6 @@ if __name__ == '__main__':
   for _ in range(100000):
     reward1, reward2 = result()
     print(reward1.item(), reward2.item())
-
     res = autograd.grad(outputs=reward1, inputs=[player1_start_theta, player1_game_theta], retain_graph=True)
     res2 = autograd.grad(outputs=reward2, inputs=[player2_start_theta, player2_game_theta])
     lr = 3e-2

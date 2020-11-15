@@ -1,0 +1,5 @@
+*.pickle
+*.png
+.idea/*
+__pycache__/*
+venv/*

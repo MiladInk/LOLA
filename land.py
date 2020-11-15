@@ -111,45 +111,48 @@ def train_lola_and_norm_lola(chosen_game, iterations_to_train: int):
     norm_lola_players_run_log.v1s.append(norm_lola_v1.item())
     norm_lola_players_run_log.v2s.append(norm_lola_v2.item())
 
+    log_players_policies(lola_player1, lola_player2, lola_players_run_log)
+    log_players_policies(norm_lola_player1, norm_lola_player2, norm_lola_players_run_log)
+
     if iteration % 1000 == 0:
       print('LOLA %d : v1 %.4f v2 %.4f NORMLOLA %.4f %.4f' % (iteration, lola_v1, lola_v2, norm_lola_v1, norm_lola_v2))
-
-  log_players_policies(lola_player1, lola_player2, lola_players_run_log)
-  log_players_policies(norm_lola_player1, norm_lola_player2, norm_lola_players_run_log)
 
   return lola_players_run_log, norm_lola_players_run_log
 
 
-def is_policy_tit_for_tat(policy: Dict[str, torch.tensor], threshold: float) -> bool:
+def is_policy_tit_for_tat(policy: Dict[str, torch.tensor], threshold: float, ignore_start: bool = False) -> bool:
   start_cooperation_probability = policy[TwoPlayerSwitchGame.START_COOPERATION_PROBABILITY]
   game_cooperation_probability = policy[TwoPlayerSwitchGame.GAME_COOPERATION_PROBABILITY]
   pCC = game_cooperation_probability[0]
   pCD = game_cooperation_probability[1]
   pDC = game_cooperation_probability[2]
   pDD = game_cooperation_probability[3]
-  if pCC < (1.-threshold):
+  if pCC < (1. - threshold):
     return False
-  if pCD > 0.+threshold:
+  if pCD > 0. + threshold:
     return False
-  if pDC < (1.-threshold):
+  if pDC < (1. - threshold):
     return False
-  if pDD > 0.+threshold:
+  if pDD > 0. + threshold:
+    return False
+  if not ignore_start and start_cooperation_probability < (1. - threshold):
     return False
 
   return True
 
 
-def get_tit_for_tat_percent_in_policies(policies: List[Dict[str, torch.tensor]], threshold: float) -> float:
+def get_tit_for_tat_percent_in_policies(policies: List[Dict[str, torch.tensor]], threshold: float,
+                                        ignore_start: bool = False) -> float:
   are_policies_tit_for_tat = []
   for policy in policies:
-    are_policies_tit_for_tat.append(is_policy_tit_for_tat(policy, threshold=threshold))
+    are_policies_tit_for_tat.append(is_policy_tit_for_tat(policy, threshold=threshold, ignore_start=ignore_start))
 
   tit_for_tat_count = 0
   for flag in are_policies_tit_for_tat:
     if flag:
       tit_for_tat_count += 1
 
-  return tit_for_tat_count/len(policies)
+  return tit_for_tat_count / len(policies)
 
 
 def plot_land():
@@ -175,31 +178,53 @@ def plot_land():
 
   print(get_tit_for_tat_percent_in_policies(lola_final_policies, threshold=0.5))
 
-  fig = plt.figure(figsize=(24, 8))
-  ax1 = fig.add_subplot(3, 1, 1)
-  ax1.hist(lola_final_vs, range=(-2., -1.))
+  fig = plt.figure(figsize=(24, 24))
+  ax1 = fig.add_subplot(4, 1, 1)
+  ax1.hist(lola_final_vs, range=(-3., 0.0))
   ax1.set_xlabel('final lola agent value')
 
-  ax2 = fig.add_subplot(3, 1, 2)
-  ax2.hist(norm_lola_final_vs, range=(-2., -1.))
+  ax2 = fig.add_subplot(4, 1, 2)
+  ax2.hist(norm_lola_final_vs, range=(-3., 0.))
   ax2.set_xlabel('final norm-lola agent value')
 
-  ax3 = fig.add_subplot(3, 1, 3)
+  ax3 = fig.add_subplot(4, 1, 3)
   thresholds = np.arange(0., 1., step=0.01)
-  lola_final_policies_tit_for_tat_percent = []
-  norm_lola_final_policies_tit_for_tat_percent = []
+  lola_final_policies_tit_for_tat_percent_with_start = []
+  norm_lola_final_policies_tit_for_tat_percent_with_start = []
   for threshold in thresholds:
-    lola_final_policies_tit_for_tat_percent.append(get_tit_for_tat_percent_in_policies(lola_final_policies,
-                                                                                       threshold))
+    lola_final_policies_tit_for_tat_percent_with_start.append(
+      get_tit_for_tat_percent_in_policies(lola_final_policies,
+                                          threshold, ignore_start=False))
 
-    norm_lola_final_policies_tit_for_tat_percent.append(get_tit_for_tat_percent_in_policies(norm_lola_final_policies,
-                                                                                            threshold))
+    norm_lola_final_policies_tit_for_tat_percent_with_start.append(
+      get_tit_for_tat_percent_in_policies(norm_lola_final_policies,
+                                          threshold, ignore_start=False))
 
-  ax3.plot(lola_final_policies_tit_for_tat_percent, thresholds)
-  ax3.plot(norm_lola_final_policies_tit_for_tat_percent, thresholds)
+  ax3.plot(thresholds, lola_final_policies_tit_for_tat_percent_with_start)
+  ax3.plot(thresholds, norm_lola_final_policies_tit_for_tat_percent_with_start)
   ax3.legend(['LOLA-LOLA', 'NORMLOLA-NORMLOLA'])
-  ax3.set_xlabel('threshold')
+  ax3.set_xlabel('threshold(on all ps)')
   ax3.set_ylabel('tit-for-tat-percent')
+
+  ax4 = fig.add_subplot(4, 1, 4)
+  thresholds = np.arange(0., 1., step=0.01)
+  lola_final_policies_tit_for_tat_percent_ignore_start = []
+  norm_lola_final_policies_tit_for_tat_percent_ignore_start = []
+
+  for threshold in thresholds:
+    lola_final_policies_tit_for_tat_percent_ignore_start.append(
+      get_tit_for_tat_percent_in_policies(lola_final_policies,
+                                          threshold, ignore_start=True))
+
+    norm_lola_final_policies_tit_for_tat_percent_ignore_start.append(
+      get_tit_for_tat_percent_in_policies(norm_lola_final_policies,
+                                          threshold, ignore_start=True))
+
+  ax4.plot(thresholds, lola_final_policies_tit_for_tat_percent_ignore_start)
+  ax4.plot(thresholds, norm_lola_final_policies_tit_for_tat_percent_ignore_start)
+  ax4.legend(['LOLA-LOLA', 'NORMLOLA-NORMLOLA'])
+  ax4.set_xlabel('threshold(ignore start)')
+  ax4.set_ylabel('tit-for-tat-percent')
 
   fig.tight_layout()
   plt.savefig('lola_vs_norm_lola.png')

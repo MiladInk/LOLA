@@ -178,16 +178,13 @@ def plot_land():
 
   print(get_tit_for_tat_percent_in_policies(lola_final_policies, threshold=0.5))
 
-  fig = plt.figure(figsize=(24, 24))
-  ax1 = fig.add_subplot(4, 1, 1)
-  ax1.hist(lola_final_vs, range=(-3., 0.0))
+  fig = plt.figure(figsize=(16, 24))
+  ax1 = fig.add_subplot(3, 1, 1)
+  ax1.hist([lola_final_vs, norm_lola_final_vs], range=(-2., -1.0))
+  ax1.legend(['LOLA-LOLA(3e-2,3e-1)', 'NORMLOLA-NORMLOLA(3e-2,9e-1)'])
   ax1.set_xlabel('final lola agent value')
 
-  ax2 = fig.add_subplot(4, 1, 2)
-  ax2.hist(norm_lola_final_vs, range=(-3., 0.))
-  ax2.set_xlabel('final norm-lola agent value')
-
-  ax3 = fig.add_subplot(4, 1, 3)
+  ax3 = fig.add_subplot(3, 1, 2)
   thresholds = np.arange(0., 1., step=0.01)
   lola_final_policies_tit_for_tat_percent_with_start = []
   norm_lola_final_policies_tit_for_tat_percent_with_start = []
@@ -206,7 +203,7 @@ def plot_land():
   ax3.set_xlabel('threshold(on all ps)')
   ax3.set_ylabel('tit-for-tat-percent')
 
-  ax4 = fig.add_subplot(4, 1, 4)
+  ax4 = fig.add_subplot(3, 1, 3)
   thresholds = np.arange(0., 1., step=0.01)
   lola_final_policies_tit_for_tat_percent_ignore_start = []
   norm_lola_final_policies_tit_for_tat_percent_ignore_start = []
@@ -228,6 +225,32 @@ def plot_land():
 
   fig.tight_layout()
   plt.savefig('lola_vs_norm_lola.png')
+
+
+def plot_run(run_log: RunLog):
+  fig = plt.figure(figsize=(8, 8))
+
+  p1policy = run_log.p1policies[-1]
+  p1v = run_log.v1s[-1]
+  ax1 = fig.add_subplot(2, 1, 1)
+  start_cooperation_probability = p1policy[TwoPlayerSwitchGame.START_COOPERATION_PROBABILITY]
+  game_cooperation_probability = p1policy[TwoPlayerSwitchGame.GAME_COOPERATION_PROBABILITY]
+  ax1.bar(['pCC', 'pCD', 'pDC', 'pDD'], game_cooperation_probability.tolist())
+  ax1.bar(['pC'], start_cooperation_probability.tolist())
+  ax1.set_ylabel('cooperation probability')
+  ax1.set_title('player1 value:'+str(p1v))
+
+  p2policy = run_log.p2policies[-1]
+  p2v = run_log.v2s[-1]
+  ax2 = fig.add_subplot(2, 1, 2)
+  start_cooperation_probability = p2policy[TwoPlayerSwitchGame.START_COOPERATION_PROBABILITY]
+  game_cooperation_probability = p2policy[TwoPlayerSwitchGame.GAME_COOPERATION_PROBABILITY]
+  ax2.bar(['pCC', 'pCD', 'pDC', 'pDD'], game_cooperation_probability.tolist())
+  ax2.bar(['pC'], start_cooperation_probability.tolist())
+  ax2.set_ylabel('cooperation probability')
+  ax2.set_title('player2 value:'+str(p2v))
+
+  plt.show()
 
 
 if __name__ == '__main__':

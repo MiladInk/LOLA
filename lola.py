@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 alpha = 0.99
 
+
 def get_initial_game_state(p1: torch.tensor, p2: torch.tensor):
   return torch.cat([p1 * p2, p1 * (1 - p2), (1 - p1) * p2, (1 - p1) * (1 - p2)], dim=0)
 
@@ -102,20 +103,24 @@ if __name__ == '__main__':
 
   rand_payoff_player1, rand_payoff_player2 = get_random_payoff_matrix()
 
-  player1_start_theta = torch.rand(1, requires_grad=True) - 0.5
-  player1_game_theta = torch.rand(4, requires_grad=True) - 0.5
-  player2_start_theta = torch.rand(1, requires_grad=True) - 0.5
-  player2_game_theta = torch.rand(4, requires_grad=True) - 0.5
+  # player1_start_theta = torch.rand(1, requires_grad=True) - 0.5
+  # player1_game_theta = torch.rand(4, requires_grad=True) - 0.5
+  # player2_start_theta = torch.rand(1, requires_grad=True) - 0.5
+  # player2_game_theta = torch.rand(4, requires_grad=True) - 0.5
 
   # player1_start_theta = torch.tensor([5.], requires_grad=True)
   # player1_game_theta = torch.tensor([5., -5., 5., -5.], requires_grad=True)
   # player2_start_theta = torch.tensor([5.], requires_grad=True)
   # player2_game_theta = torch.tensor([5., 5., -5., -5.], requires_grad=True)
 
-  # player1_start_theta = torch.tensor([-5.], requires_grad=True)
-  # player1_game_theta = torch.tensor([-5., -5., -5., -5.], requires_grad=True)
-  # player2_start_theta = torch.tensor([-5.], requires_grad=True)
-  # player2_game_theta = torch.tensor([-5., -5., -5., -5.], requires_grad=True)
+  def perturbed_fixed():
+    how_bad = -3.
+    return how_bad+random.random()
+
+  player1_start_theta = torch.tensor([perturbed_fixed()], requires_grad=True)
+  player1_game_theta = torch.tensor([perturbed_fixed(), perturbed_fixed(), perturbed_fixed(), perturbed_fixed()], requires_grad=True)
+  player2_start_theta = torch.tensor([perturbed_fixed()], requires_grad=True)
+  player2_game_theta = torch.tensor([perturbed_fixed(), perturbed_fixed(), perturbed_fixed(), perturbed_fixed()], requires_grad=True)
 
   # --- calculate the reward ---
 
@@ -166,8 +171,11 @@ if __name__ == '__main__':
       print('iter:', i, V1.item(), V2.item())
       p1cc, p1cd, p1dc, p1dd = player1_game_theta.tolist()
       p2cc, p2cd, p2dc, p2dd = player2_game_theta.tolist()
+      p1c = player1_start_theta.tolist()[0]
+      p2c = player2_start_theta.tolist()[0]
       print('p1CCl %.4f p1CDl  %.4f p1DCl %.4f p1DDl %.4f' % (p1cc, p1cd, p1dc, p1dd))
       print('p2CCl %.4f p2CDl  %.4f p2DCl %.4f p2DDl %.4f' % (p2cc, p2cd, p2dc, p2dd))
+      print('p1Cl %.4f p2Cl %.4f' % (p1c, p2c))
 
       p1cc, p1cd, p1dc, p1dd = player1_cooperate_probability.tolist()
       p2cc, p2cd, p2dc, p2dd = player2_cooperate_probability.tolist()
@@ -206,9 +214,11 @@ if __name__ == '__main__':
 
     V1_taylor = torch.dot(normalize(dV1_wrt_player2_theta), normalize(dV2_wrt_player2_theta))
     V2_taylor = torch.dot(normalize(dV2_wrt_player1_theta), normalize(dV1_wrt_player1_theta))
+    # V1_taylor = torch.dot(normalize(dV1_wrt_player2_theta.detach()), dV2_wrt_player2_theta)
+    # V2_taylor = torch.dot(normalize(dV2_wrt_player1_theta.detach()), dV1_wrt_player1_theta)
     #
-    # V1_taylor = torch.dot(dV1_wrt_player2_theta.detach(), normalize(dV2_wrt_player2_theta))
-    # V2_taylor = torch.dot(dV2_wrt_player1_theta.detach(), normalize(dV1_wrt_player1_theta))
+    # V1_taylor = torch.dot(dV1_wrt_player2_theta.detach(), dV2_wrt_player2_theta)
+    # V2_taylor = torch.dot(dV2_wrt_player1_theta.detach(), dV1_wrt_player1_theta)
 
     v1_taylors.append(V1_taylor.item())
     v2_taylors.append(V2_taylor.item())
@@ -231,9 +241,7 @@ if __name__ == '__main__':
     lr2 = 3e-2
     eta2 = 9e-1
 
-    # if i < 3000:
-    #   eta1 = 0
-    #   eta2 = 0
+
 
     player1_start_theta.data.add_(dV1_wrt_player1_start_theta * lr1 + dV1_taylor_wrt_player1_start_theta * eta1)
     player1_game_theta.data.add_(dV1_wrt_player1_game_theta * lr1 + dV1_taylor_wrt_player1_game_theta * eta1)
@@ -242,7 +250,7 @@ if __name__ == '__main__':
     player2_game_theta.data.add_(dV2_wrt_player2_game_theta * lr2 + dV2_taylor_wrt_player2_game_theta * eta2)
 
     # plotting the probabilities
-    if i % 1000 == 0:
+    if i % 10000 == 0:
       print('lr1 %.4f eta1 %.f4 lr2 %.4f eta2 %.4f' % (lr1, eta1, lr2, eta2))
       player1_start_cooperate_probability = game_start_probability(player1_start_theta)
       player2_start_cooperate_probability = game_start_probability(player2_start_theta)
@@ -251,10 +259,12 @@ if __name__ == '__main__':
       player1_cooperate_probability = game_cooperate_probability(player1_game_theta)
       player2_cooperate_probability = game_cooperate_probability(player2_game_theta)
 
+      plt.ylim(0.0, 1.0)
       plt.bar(['p1CC', 'p1CD', 'p1DC', 'p1DD'], player1_cooperate_probability.tolist())
       plt.bar(['p2CC', 'p2CD', 'p2DC', 'p2DD'], player2_cooperate_probability.tolist())
       plt.bar(['p1_C', 'p2_C'], [player1_start_cooperate_probability.tolist()[0],
                                  player2_start_cooperate_probability.tolist()[0]])
+      plt.title('iteration'+str(i))
       plt.show()
 
       plt.figure(figsize=(15, 8))
@@ -266,6 +276,8 @@ if __name__ == '__main__':
       plt.plot(np.arange(len(v1s)), v1_taylors)
       plt.plot(np.arange(len(v1s)), v2_taylors)
       plt.legend(['V1_taylor_LOLA_term', 'V2_taylor_LOLA_term'], loc='upper left', frameon=True, framealpha=1, ncol=3)
+      plt.xlabel('iterations')
+      plt.ylabel('value of dot product')
       plt.show()
-      time.sleep(1)
+      time.sleep(0.1)
 

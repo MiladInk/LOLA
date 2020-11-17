@@ -111,11 +111,11 @@ def train_lola_and_norm_lola(chosen_game, iterations_to_train: int):
     norm_lola_players_run_log.v1s.append(norm_lola_v1.item())
     norm_lola_players_run_log.v2s.append(norm_lola_v2.item())
 
-    log_players_policies(lola_player1, lola_player2, lola_players_run_log)
-    log_players_policies(norm_lola_player1, norm_lola_player2, norm_lola_players_run_log)
-
     if iteration % 1000 == 0:
       print('LOLA %d : v1 %.4f v2 %.4f NORMLOLA %.4f %.4f' % (iteration, lola_v1, lola_v2, norm_lola_v1, norm_lola_v2))
+
+  log_players_policies(lola_player1, lola_player2, lola_players_run_log)
+  log_players_policies(norm_lola_player1, norm_lola_player2, norm_lola_players_run_log)
 
   return lola_players_run_log, norm_lola_players_run_log
 

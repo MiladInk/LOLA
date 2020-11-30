@@ -3,11 +3,10 @@ from typing import Dict, List
 import torch
 from torch import autograd
 
-from lola import normalize
 
-
-class AgentUpdateStrategy:
-  pass
+def normalize(t: torch.tensor) -> torch.tensor:
+  norm = torch.sqrt((t ** 2).sum())
+  return t / norm
 
 
 class Agent:

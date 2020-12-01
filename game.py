@@ -111,7 +111,7 @@ class RandomGame(TwoPlayerSwitchGame):
     return player1_payoff_tensor, player2_payoff_tensor
 
 
-alpha = 0.9999
+alpha = 0.96
 
 
 def get_initial_game_state(p1: torch.tensor, p2: torch.tensor):
